@@ -11,6 +11,7 @@ const factorySchema = new Schema({
         type: Boolean,
         default: false
     },
+    parent: { type: Schema.Types.ObjectId, ref: 'factory' },
     children: {
         type: [{ type: Schema.Types.ObjectId, ref: 'factory' }],
     },

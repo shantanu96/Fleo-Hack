@@ -7,10 +7,15 @@ router.post('/create', async (req, res) => {
     const fields = {};
     fields.name = req.body.name;
     fields.isCompany = req.body.isCompany;
-    fields.totalSales = req.body.totalSales;
-    fields.targetSales = req.body.targetSales;
+    fields.totalSales = 0;
+    fields.targetSales = 0;
+    if (req.body.parent != '')
+        fields.parent = req.body.parent;
+    else
+        fields.parent = null;
     const factory = await new Factory(fields).save();
 
+    // add children in parent
     if (req.body.parent != null && req.body.parent != '') {
         const result = await Factory.findByIdAndUpdate(req.body.parent, {
             $push: {
@@ -39,12 +44,7 @@ router.get('/all/:factoryId', async (req, res) => {
 router.post('/update/target-sale/:factoryId', async (req, res) => {
     const id = req.params.factoryId;
     const targetSales = req.body.targetSales;
-    const factories = await Factory.findByIdAndUpdate(id, {
-        $set: {
-            targetSales: targetSales,
-        }
-    })
-
+    const factories = await updateSalesRecord(Factory, id, targetSales);
     res.status(200).json(factories);
 });
 
@@ -55,5 +55,15 @@ const populateChildren = (coll, _id) => // takes a collection and a document id 
             return Promise.all(o.children.map(i => populateChildren(coll, i)))
                 .then(children => Object.assign(o, { children }))
         });
+
+const updateSalesRecord = async (coll, _id, incrementValue) => {
+    const fact = await coll.findOne({ _id });
+    if (fact) {
+        await fact.updateOne({ $inc: { targetSales: incrementValue } });
+        return updateSalesRecord(coll, fact.parent, incrementValue);
+    } else {
+        return fact;
+    }
+}
 
 export default router;
